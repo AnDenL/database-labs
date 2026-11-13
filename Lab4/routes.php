@@ -84,13 +84,33 @@ $router->get('/warehouses/delete', function() use ($dbc) {
 });
 
 // --- OPERATIONS ---
-$router->get('/operations', function() use ($dbc) {
+$router->get('/operations', function () use ($dbc) {
     $edit_id   = (int)($_GET['edit'] ?? 0);
     $edit_data = null;
     $error     = $_GET['error'] ?? null;
 
+    // Підтягуємо операцію разом з усіма деталями з дочірніх таблиць
     if ($edit_id > 0) {
-        $stmt = mysqli_prepare($dbc, "SELECT * FROM operations WHERE op_id = ?");
+        $editSql = "
+            SELECT
+                o.*,
+                COALESCE(p.field_id, sow.field_id, h.field_id) AS field_id,
+                COALESCE(sow.crop_id, t.crop_id, s.crop_id) AS crop_id,
+                t.warehouse_id,
+                h.harvested_tons,
+                t.transferred_tons,
+                s.sold_tons,
+                s.price_per_ton,
+                s.buyer_id
+            FROM operations o
+            LEFT JOIN plowing_ops p ON o.op_id = p.op_id
+            LEFT JOIN sowing_ops sow ON o.op_id = sow.op_id
+            LEFT JOIN harvesting_ops h ON o.op_id = h.op_id
+            LEFT JOIN transfer_ops t ON o.op_id = t.op_id
+            LEFT JOIN sales_ops s ON o.op_id = s.op_id
+            WHERE o.op_id = ?
+        ";
+        $stmt = mysqli_prepare($dbc, $editSql);
         mysqli_stmt_bind_param($stmt, "i", $edit_id);
         mysqli_stmt_execute($stmt);
         $edit_data = mysqli_fetch_assoc(mysqli_stmt_get_result($stmt)) ?: null;
@@ -101,16 +121,76 @@ $router->get('/operations', function() use ($dbc) {
             mysqli_stmt_bind_param($wStmt, "i", $edit_id);
             mysqli_stmt_execute($wStmt);
             $wRes = mysqli_stmt_get_result($wStmt);
-            $edit_data['workers'] = array_column(mysqli_fetch_all($wRes, MYSQLI_ASSOC), 'tab_number');
+            $edit_data['workers'] = array_map(
+                'intval',
+                array_column(mysqli_fetch_all($wRes, MYSQLI_ASSOC), 'tab_number')
+            );
             mysqli_stmt_close($wStmt);
         }
     }
 
-    $fields     = mysqli_fetch_all(mysqli_query($dbc, "SELECT field_id, name FROM fields"), MYSQLI_ASSOC);
-    $crops      = mysqli_fetch_all(mysqli_query($dbc, "SELECT crop_id, name FROM crops"), MYSQLI_ASSOC);
-    $workers    = mysqli_fetch_all(mysqli_query($dbc, "SELECT tab_number, full_name FROM workers"), MYSQLI_ASSOC);
-    $warehouses = mysqli_fetch_all(mysqli_query($dbc, "SELECT warehouse_id, name FROM warehouses"), MYSQLI_ASSOC);
-    $buyers     = mysqli_fetch_all(mysqli_query($dbc, "SELECT buyer_id, name FROM buyers"), MYSQLI_ASSOC);
+    $fields     = mysqli_fetch_all(mysqli_query($dbc, "SELECT field_id, name FROM fields ORDER BY name"), MYSQLI_ASSOC);
+    $crops      = mysqli_fetch_all(mysqli_query($dbc, "SELECT crop_id, name FROM crops ORDER BY name"), MYSQLI_ASSOC);
+    $workers    = mysqli_fetch_all(mysqli_query($dbc, "SELECT tab_number, full_name FROM workers ORDER BY full_name"), MYSQLI_ASSOC);
+    $warehouses = mysqli_fetch_all(mysqli_query($dbc, "SELECT warehouse_id, name FROM warehouses ORDER BY name"), MYSQLI_ASSOC);
+    $buyers     = mysqli_fetch_all(mysqli_query($dbc, "SELECT buyer_id, name FROM buyers ORDER BY name"), MYSQLI_ASSOC);
+
+    // --- ФІЛЬТРАЦІЯ ТА СОРТУВАННЯ ---
+    $filterType   = $_GET['filter_type'] ?? '';
+    $filterStatus = $_GET['filter_status'] ?? '';
+    $filterWorker = (int)($_GET['filter_worker'] ?? 0);
+    $dateFrom     = $_GET['date_from'] ?? '';
+    $dateTo       = $_GET['date_to'] ?? '';
+
+    $where  = [];
+    $params = [];
+    $types  = '';
+
+    $allowedTypes = ['PLOWING', 'SOWING', 'HARVESTING', 'TRANSFER', 'SALES'];
+    if (in_array($filterType, $allowedTypes, true)) {
+        $where[]  = "o.op_type = ?";
+        $params[] = $filterType;
+        $types   .= 's';
+    }
+
+    $allowedStatuses = ['PLANNED', 'IN_PROGRESS', 'COMPLETED', 'POSTPONED', 'CANCELLED'];
+    if (in_array($filterStatus, $allowedStatuses, true)) {
+        $where[]  = "o.status = ?";
+        $params[] = $filterStatus;
+        $types   .= 's';
+    }
+
+    if ($filterWorker > 0) {
+        // EXISTS зберігає повний список працівників у GROUP_CONCAT
+        $where[]  = "EXISTS (SELECT 1 FROM operation_workers owf WHERE owf.op_id = o.op_id AND owf.tab_number = ?)";
+        $params[] = $filterWorker;
+        $types   .= 'i';
+    }
+
+    if ($dateFrom !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateFrom)) {
+        $where[]  = "o.op_date >= ?";
+        $params[] = $dateFrom;
+        $types   .= 's';
+    }
+
+    if ($dateTo !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateTo)) {
+        $where[]  = "o.op_date <= ?";
+        $params[] = $dateTo;
+        $types   .= 's';
+    }
+
+    $whereSql = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+    $allowedSorts = [
+        'op_id'         => 'o.op_id',
+        'op_type'       => 'o.op_type',
+        'op_date'       => 'o.op_date',
+        'planned_hours' => 'o.planned_hours',
+        'status'        => 'o.status',
+    ];
+    $sort    = $_GET['sort'] ?? 'op_id';
+    $sortCol = $allowedSorts[$sort] ?? 'o.op_id';
+    $dir     = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
 
     $sql = "
         SELECT
@@ -127,7 +207,7 @@ $router->get('/operations', function() use ($dbc) {
             t.transferred_tons,
             s.sold_tons,
             s.price_per_ton,
-            GROUP_CONCAT(wrk.full_name SEPARATOR ', ') AS workers_list
+            GROUP_CONCAT(wrk.full_name ORDER BY wrk.full_name SEPARATOR ', ') AS workers_list
         FROM operations o
         LEFT JOIN plowing_ops p ON o.op_id = p.op_id
         LEFT JOIN sowing_ops sow ON o.op_id = sow.op_id
@@ -140,12 +220,18 @@ $router->get('/operations', function() use ($dbc) {
         LEFT JOIN buyers b ON b.buyer_id = s.buyer_id
         LEFT JOIN operation_workers ow ON o.op_id = ow.op_id
         LEFT JOIN workers wrk ON ow.tab_number = wrk.tab_number
+        {$whereSql}
         GROUP BY o.op_id
-        ORDER BY o.op_id DESC
+        ORDER BY {$sortCol} {$dir}
     ";
 
-    $result = mysqli_query($dbc, $sql);
-    $items  = mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $stmt = mysqli_prepare($dbc, $sql);
+    if (!empty($params)) {
+        mysqli_stmt_bind_param($stmt, $types, ...$params);
+    }
+    mysqli_stmt_execute($stmt);
+    $items = mysqli_fetch_all(mysqli_stmt_get_result($stmt), MYSQLI_ASSOC);
+    mysqli_stmt_close($stmt);
 
     require 'views/operations.php';
 });

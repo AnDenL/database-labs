@@ -1,6 +1,5 @@
 <?php if (!empty($error)): ?>
-    <br>
-    <div style="background: #ffcccc; color: #990000; padding: 10px; margin-bottom: 15px; border: 1px solid #990000;">
+    <div style="background: #ffe6e6; color: #cc0000; padding: 10px; margin-bottom: 15px; border: 1px solid #cc0000;">
         <?= htmlspecialchars($error) ?>
     </div>
 <?php endif; ?>

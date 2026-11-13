@@ -20,13 +20,7 @@ include "menu.php";
     } else {
         $counter=0;
     }
-    $counter++;
     print $counter;
-    $fp = fopen($filename,"w");
-    if ($fp) {
-        $ii=fputs($fp,$counter);
-        fclose($fp);
-    }
 ?></p>
 <?php
 include "footer.php";

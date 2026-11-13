@@ -17,9 +17,8 @@ function get_table_schema(mysqli $dbc, string $tableName, array $labels = []): a
         };
 
         $inputType = match ($bindType) {
-            'i' => 'number',
-            'd' => 'number',
-            default => 'text',
+            'i', 'd' => 'number',
+            default  => 'text',
         };
 
         $schema[$field->name] = [
@@ -47,6 +46,7 @@ function render_page(
     $edit_data = null;
     $items     = [];
     $error     = $_GET['error'] ?? null;
+    $search    = trim((string)($_GET['q'] ?? ''));
 
     try {
         $columns = get_table_schema($dbc, $tableName, $labels);
@@ -63,9 +63,32 @@ function render_page(
             }
         }
 
-        $result = mysqli_query($dbc, "SELECT * FROM `{$tableName}` ORDER BY `{$primaryKey}` DESC");
-        $items  = mysqli_fetch_all($result, MYSQLI_ASSOC);
+        $sort    = $_GET['sort'] ?? $primaryKey;
+        $sortCol = array_key_exists($sort, $columns) ? $sort : $primaryKey;
+        $dir     = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
 
+        $whereSql = '';
+        $params   = [];
+        $types    = '';
+
+        if ($search !== '') {
+            $likeClauses = [];
+            foreach ($columns as $colName => $meta) {
+                $likeClauses[] = "CAST(`{$colName}` AS CHAR) LIKE ?";
+                $params[]      = "%{$search}%";
+                $types        .= 's';
+            }
+            $whereSql = 'WHERE ' . implode(' OR ', $likeClauses);
+        }
+
+        $sql  = "SELECT * FROM `{$tableName}` {$whereSql} ORDER BY `{$sortCol}` {$dir}";
+        $stmt = mysqli_prepare($dbc, $sql);
+        if (!empty($params)) {
+            mysqli_stmt_bind_param($stmt, $types, ...$params);
+        }
+        mysqli_stmt_execute($stmt);
+        $items = mysqli_fetch_all(mysqli_stmt_get_result($stmt), MYSQLI_ASSOC);
+        mysqli_stmt_close($stmt);
     } catch (mysqli_sql_exception $e) {
         http_response_code(500);
         $error = "Помилка бази даних: " . $e->getMessage();
@@ -73,7 +96,6 @@ function render_page(
 
     require 'views/crud.php';
 }
-
 
 function auto_save(mysqli $dbc, string $tableName, string $primaryKey, string $redirectUri): void {
     try {
