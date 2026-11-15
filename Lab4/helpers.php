@@ -5,6 +5,14 @@ function ident(string $name): string {
     return '`' . str_replace('`', '``', $name) . '`';
 }
 
+function get_db_views(mysqli $dbc): array {
+    $rows = db_all(
+        $dbc,
+        'SELECT TABLE_NAME FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME'
+    );
+    return array_column($rows, 'TABLE_NAME');
+}
+
 function db_run(mysqli $dbc, string $sql, string $types = '', array $params = []): mysqli_stmt {
     $stmt = mysqli_prepare($dbc, $sql);
     if ($params) {
@@ -123,11 +131,13 @@ function render_page(
     string $primaryKey,
     string $pageTitle,
     string $baseUri,
-    array $labels = []
+    array $labels = [],
+    bool $readOnly = false,
+    array $viewSwitcher = []
 ): void {
     $tbl         = ident($tableName);
-    $pk          = ident($primaryKey);
-    $edit_id     = (int)($_GET['edit'] ?? 0);
+    $pk          = $primaryKey !== '' ? ident($primaryKey) : '';
+    $edit_id     = !$readOnly ? (int)($_GET['edit'] ?? 0) : 0;
     $edit_data   = null;
     $items       = [];
     $columns     = [];
@@ -139,15 +149,19 @@ function render_page(
     try {
         $columns = get_table_schema($dbc, $tableName, $labels);
 
-        if ($edit_id > 0) {
+        if ($edit_id > 0 && $pk !== '') {
             $edit_data = db_one($dbc, "SELECT * FROM $tbl WHERE $pk = ?", 'i', [$edit_id]);
             if ($edit_data === null) {
                 $error = "Запис з ID {$edit_id} не знайдено.";
             }
         }
 
-        $sort        = get_str('sort', $primaryKey);
-        $currentSort = array_key_exists($sort, $columns) ? $sort : $primaryKey;
+        $defaultSort = array_key_exists($primaryKey, $columns)
+            ? $primaryKey
+            : (string)(array_key_first($columns) ?? '');
+
+        $sort        = get_str('sort', $defaultSort);
+        $currentSort = array_key_exists($sort, $columns) ? $sort : $defaultSort;
         $currentDir  = strtoupper(get_str('dir')) === 'ASC' ? 'ASC' : 'DESC';
 
         $where  = '';
@@ -157,16 +171,20 @@ function render_page(
             $conds = [];
             foreach ($columns as $col => $meta) {
                 if (!$meta['is_blob']) {
-                    $conds[] = 'CAST(' . ident($col) . ' AS CHAR) LIKE ?';
+                    $conds[]  = 'CAST(' . ident($col) . ' AS CHAR) LIKE ?';
                     $params[] = $like;
                 }
             }
-            $where = 'WHERE ' . implode(' OR ', $conds);
+            if ($conds) {
+                $where = 'WHERE ' . implode(' OR ', $conds);
+            }
         }
+
+        $orderBy = $currentSort !== '' ? 'ORDER BY ' . ident($currentSort) . " $currentDir" : '';
 
         $items = db_all(
             $dbc,
-            "SELECT * FROM $tbl $where ORDER BY " . ident($currentSort) . " $currentDir",
+            "SELECT * FROM $tbl $where $orderBy",
             str_repeat('s', count($params)),
             $params
         );
@@ -183,7 +201,7 @@ function auto_save(mysqli $dbc, string $tableName, string $primaryKey, string $b
     try {
         $schema = get_table_schema($dbc, $tableName);
         $id     = (int)($_POST[$primaryKey] ?? 0);
-        $data   = [];  
+        $data   = [];
 
         foreach ($schema as $col => $meta) {
             if ($meta['is_pk'] || $meta['is_auto']) {

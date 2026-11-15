@@ -7,6 +7,14 @@
 </head>
 <body>
     <?php include 'menu.php'; ?>
+    <select name="op_type" id="op_type" onchange="toggleFormFields()" required>
+        <option value="">-- Оберіть тип --</option>
+        <?php foreach (OP_TYPES as $val => $label): ?>
+            <option value="<?= $val ?>" <?= ($edit_data['op_type'] ?? '') === $val ? 'selected' : '' ?>>
+                <?= htmlspecialchars($label) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
     <h2>Зведений звіт по операціях (вибірка з VIEW)</h2>
     <table border="1" cellpadding="6" cellspacing="0">
         <thead>

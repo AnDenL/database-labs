@@ -49,6 +49,69 @@ $router->post('/operations/delete', fn() => delete_operation($dbc, (int)($_POST[
 
 // --- REPORT ---
 $router->get('/report', function () use ($dbc) {
-    $items = db_all($dbc, 'SELECT * FROM v_operations_report ORDER BY op_date DESC, op_id DESC');
-    require 'views/report.php';
+    $views = get_db_views($dbc);
+
+    if (!$views) {
+        http_response_code(404);
+        die('У базі даних не знайдено жодного VIEW.');
+    }
+
+    $viewMeta = [
+        'v_operations_report' => [
+            'title'  => 'Зведений звіт по операціях',
+            'labels' => [
+                'op_id'          => 'ID',
+                'op_type'        => 'Тип',
+                'op_date'        => 'Дата',
+                'planned_hours'  => 'Години',
+                'status'         => 'Статус',
+                'field_name'     => 'Поле',
+                'crop_name'      => 'Культура',
+                'warehouse_name' => 'Склад',
+                'buyer_name'     => 'Покупець',
+                'tons'           => 'Тонни',
+                'total_revenue'  => 'Сума, грн',
+                'workers'        => 'Працівники',
+            ],
+        ],
+        'v_active_fields' => [
+            'title'  => 'Зведений звіт по активним полям',
+            'labels' => [
+                'field_id' => 'ID',
+                'name'     => 'Назва поля',
+                'area'     => 'Площа',
+            ],
+        ],
+        'v_sales_report' => [
+            'title'  => 'Зведений звіт з продажів',
+            'labels' => [
+                'op_id'          => 'ID',
+                'op_date'        => 'Дата',
+                'crop_name'      => 'Культура',
+                'buyer_name'     => 'Покупець',
+                'sold_tons'      => 'Продано тон',
+                'price_per_ton'  => 'Ціна за тонну грн',
+                'total_sum'      => 'Загальна сума грн',
+            ],
+        ],
+    ];
+
+    $requested = get_str('view');
+    $current   = in_array($requested, $views, true) ? $requested : $views[0];
+    $meta      = $viewMeta[$current] ?? [];
+
+    render_page(
+        $dbc,
+        $current,
+        '',
+        $meta['title'] ?? "Звіт (VIEW): {$current}",
+        '/report',
+        $meta['labels'] ?? [],
+        true,
+        [
+            'views'   => $views,
+            'current' => $current,
+            'meta'    => $viewMeta,
+        ]
+    );
 });
