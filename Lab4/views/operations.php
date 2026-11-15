@@ -1,23 +1,4 @@
 <?php
-$types = [
-    'PLOWING'    => 'Оранка (PLOWING)',
-    'SOWING'     => 'Посів (SOWING)',
-    'HARVESTING' => 'Збирання врожаю (HARVESTING)',
-    'TRANSFER'   => 'Переміщення на склад (TRANSFER)',
-    'SALES'      => 'Продаж партії (SALES)',
-];
-
-$statuses = [
-    'PLANNED'     => 'Заплановано (PLANNED)',
-    'IN_PROGRESS' => 'Виконується (IN_PROGRESS)',
-    'COMPLETED'   => 'Виконано (COMPLETED)',
-    'POSTPONED'   => 'Відкладено (POSTPONED)',
-    'CANCELLED'   => 'Скасовано (CANCELLED)',
-];
-
-$currentSort = $_GET['sort'] ?? 'op_id';
-$currentDir  = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-
 function sort_url(string $column, string $currentSort, string $currentDir): string {
     $query = $_GET;
     unset($query['edit']);
@@ -94,7 +75,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 <label for="op_type">Тип операції:</label>
                 <select name="op_type" id="op_type" onchange="toggleFormFields()" required>
                     <option value="">-- Оберіть тип --</option>
-                    <?php foreach ($types as $val => $label): ?>
+                    <?php foreach (OP_TYPES as $val => $label): ?>
                         <option value="<?= $val ?>" <?= ($edit_data['op_type'] ?? '') === $val ? 'selected' : '' ?>>
                             <?= htmlspecialchars($label) ?>
                         </option>
@@ -115,7 +96,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
             <div class="form-group">
                 <label>Статус:</label>
                 <select name="status" required>
-                    <?php foreach ($statuses as $stVal => $stLabel): ?>
+                    <?php foreach (OP_STATUSES as $stVal => $stLabel): ?>
                         <option value="<?= $stVal ?>" <?= ($edit_data['status'] ?? 'COMPLETED') === $stVal ? 'selected' : '' ?>>
                             <?= htmlspecialchars($stLabel) ?>
                         </option>
@@ -220,8 +201,8 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 <label>Тип операції:</label>
                 <select name="filter_type">
                     <option value="">Усі типи</option>
-                    <?php foreach ($types as $val => $label): ?>
-                        <option value="<?= $val ?>" <?= ($_GET['filter_type'] ?? '') === $val ? 'selected' : '' ?>>
+                    <?php foreach (OP_TYPES as $val => $label): ?>
+                        <option value="<?= $val ?>" <?= $filterType === $val ? 'selected' : '' ?>>
                             <?= htmlspecialchars($label) ?>
                         </option>
                     <?php endforeach; ?>
@@ -232,8 +213,8 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 <label>Статус:</label>
                 <select name="filter_status">
                     <option value="">Усі статуси</option>
-                    <?php foreach ($statuses as $stVal => $stLabel): ?>
-                        <option value="<?= $stVal ?>" <?= ($_GET['filter_status'] ?? '') === $stVal ? 'selected' : '' ?>>
+                    <?php foreach (OP_STATUSES as $stVal => $stLabel): ?>
+                        <option value="<?= $stVal ?>" <?= $filterStatus === $stVal ? 'selected' : '' ?>>
                             <?= htmlspecialchars($stLabel) ?>
                         </option>
                     <?php endforeach; ?>
@@ -245,7 +226,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 <select name="filter_worker">
                     <option value="0">Усі працівники</option>
                     <?php foreach ($workers as $w): ?>
-                        <option value="<?= (int)$w['tab_number'] ?>" <?= (int)($_GET['filter_worker'] ?? 0) === (int)$w['tab_number'] ? 'selected' : '' ?>>
+                        <option value="<?= (int)$w['tab_number'] ?>" <?= $filterWorker === (int)$w['tab_number'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($w['full_name']) ?>
                         </option>
                     <?php endforeach; ?>
@@ -254,12 +235,12 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
 
             <div class="form-group">
                 <label>Дата від:</label>
-                <input type="date" name="date_from" value="<?= htmlspecialchars($_GET['date_from'] ?? '') ?>">
+                <input type="date" name="date_from" value="<?= htmlspecialchars($dateFrom) ?>">
             </div>
 
             <div class="form-group">
                 <label>Дата до:</label>
-                <input type="date" name="date_to" value="<?= htmlspecialchars($_GET['date_to'] ?? '') ?>">
+                <input type="date" name="date_to" value="<?= htmlspecialchars($dateTo) ?>">
             </div>
 
             <div class="form-group">
@@ -291,11 +272,9 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
     <table border="1" cellpadding="6" cellspacing="0" id="operationsTable">
         <thead>
             <tr>
-                <th><a class="sort-link" href="<?= htmlspecialchars(sort_url('op_id', $currentSort, $currentDir)) ?>">ID<?= sort_arrow('op_id', $currentSort, $currentDir) ?></a></th>
-                <th><a class="sort-link" href="<?= htmlspecialchars(sort_url('op_type', $currentSort, $currentDir)) ?>">Тип операції<?= sort_arrow('op_type', $currentSort, $currentDir) ?></a></th>
-                <th><a class="sort-link" href="<?= htmlspecialchars(sort_url('op_date', $currentSort, $currentDir)) ?>">Дата<?= sort_arrow('op_date', $currentSort, $currentDir) ?></a></th>
-                <th><a class="sort-link" href="<?= htmlspecialchars(sort_url('planned_hours', $currentSort, $currentDir)) ?>">Години<?= sort_arrow('planned_hours', $currentSort, $currentDir) ?></a></th>
-                <th><a class="sort-link" href="<?= htmlspecialchars(sort_url('status', $currentSort, $currentDir)) ?>">Статус<?= sort_arrow('status', $currentSort, $currentDir) ?></a></th>
+                <?php foreach (['op_id' => 'ID', 'op_type' => 'Тип операції', 'op_date' => 'Дата', 'planned_hours' => 'Години', 'status' => 'Статус'] as $col => $title): ?>
+                    <th><a class="sort-link" href="<?= htmlspecialchars(sort_url($col, $currentSort, $currentDir)) ?>"><?= $title ?><?= sort_arrow($col, $currentSort, $currentDir) ?></a></th>
+                <?php endforeach; ?>
                 <th>Деталі та виконавці</th>
                 <th>Дії</th>
             </tr>
@@ -307,7 +286,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 <?php foreach ($items as $row): ?>
                 <tr>
                     <td><?= (int)$row['op_id'] ?></td>
-                    <td><?= htmlspecialchars($types[$row['op_type']] ?? $row['op_type']) ?></td>
+                    <td><?= htmlspecialchars(OP_TYPES[$row['op_type']] ?? $row['op_type']) ?></td>
                     <td><?= htmlspecialchars($row['op_date']) ?></td>
                     <td><?= htmlspecialchars((string)$row['planned_hours']) ?></td>
                     <td><?= htmlspecialchars($row['status']) ?></td>

@@ -1,29 +1,15 @@
-<html>
-<meta charset=utf-8>
+<!DOCTYPE html>
+<html lang="uk">
 <head>
+    <meta charset="UTF-8">
     <title>Menu</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<?php
-include "menu.php";
-?>
+<?php include 'menu.php'; ?>
 
-<h2><b>Welcome! <br></b></h2>
-<p>Число відвідувань:
-<?php
-    $filename = "counter.txt";
-    $fp = fopen($filename,"r");
-    if ($fp) {
-        $counter=fgets($fp,10);
-        fclose($fp);
-    } else {
-        $counter=0;
-    }
-    print $counter;
-?></p>
-<?php
-include "footer.php";
-?>
+<h2>Welcome!</h2>
+<p>Число відвідувань: <?= (int)$counter ?></p>
+<?php include 'footer.php'; ?>
 </body>
 </html>

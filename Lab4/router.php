@@ -2,60 +2,30 @@
 declare(strict_types=1);
 
 class Router {
-    /**
-    * @var array<int, array{
-    *     method: string,
-    *     path: string,
-    *     handler: callable(): void|array{0: class-string, 1: string}
-    * }>
-    */
+
     private array $routes = [];
-
     /**
-    * @param string $path
-    * @param callable(): void|array{0: class-string, 1: string} $handler
-    */
+     * @param callable(): mixed $handler
+     */
     public function get(string $path, callable $handler): void {
-        $this->add_route('GET', $path, $handler);
+        $this->routes['GET'][$path] = $handler;
     }
-
     /**
-    * @param string $path
-    * @param callable(): void|array{0: class-string, 1: string} $handler
-    */
+     * @param callable(): mixed $handler
+     */
     public function post(string $path, callable $handler): void {
-        $this->add_route('POST', $path, $handler);
+        $this->routes['POST'][$path] = $handler;
     }
 
-    /**
-    * @param string $path
-    * @param callable(): void|array{0: class-string, 1: string} $handler
-    */
-    private function add_route(string $method, string $path, callable $handler): void {
-        $this->routes[] = [
-            'method'  => $method,
-            'path'    => $path,
-            'handler' => $handler,
-        ];
-    }
+    public function route(string $method, string $uri): void {
+        $path    = (string)(parse_url($uri, PHP_URL_PATH) ?: '/');
+        $handler = $this->routes[$method][$path] ?? null;
 
-    /**
-    * @param string $method
-    * @param string $path
-    * @param callable(): void|array{0: class-string, 1: string} $handler
-    */
-    public function route(string $requestMethod, string $requestUri): void {
-        $path = parse_url($requestUri, PHP_URL_PATH) ?? '/';
-
-        foreach ($this->routes as $route) {
-            if ($route['method'] === $requestMethod && $route['path'] === $path) {
-                call_user_func($route['handler']);
-                return;
-            }
+        if ($handler === null) {
+            http_response_code(404);
+            echo '<h1>404 | Not Found</h1>';
+            return;
         }
-
-        http_response_code(404);
-        echo "<h1>404 | Not Found</h1>";
+        $handler();
     }
 }
-?>

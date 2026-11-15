@@ -1,7 +1,4 @@
 <?php
-$currentSort = $_GET['sort'] ?? $primaryKey;
-$currentDir  = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-
 $crudSortUrl = function (string $col) use ($baseUri, $currentSort, $currentDir): string {
     $q = $_GET;
     unset($q['edit']);
@@ -24,6 +21,12 @@ $crudArrow = function (string $col) use ($currentSort, $currentDir): string {
 </head>
 <body>
     <?php include 'menu.php'; ?>
+
+    <?php if (!empty($error)): ?>
+        <div style="background: #ffe6e6; color: #cc0000; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+            <?= htmlspecialchars($error) ?>
+        </div>
+    <?php endif; ?>
 
     <h2><?= $edit_data ? 'Редагувати запис' : 'Додати новий запис' ?></h2>
     <form method="post" action="<?= $baseUri ?>/save" enctype="multipart/form-data">
@@ -91,9 +94,9 @@ $crudArrow = function (string $col) use ($currentSort, $currentDir): string {
     <h2><?= htmlspecialchars($pageTitle) ?></h2>
 
     <form method="get" action="<?= $baseUri ?>" style="display: flex; gap: 10px; align-items: center; max-width: 500px; padding: 12px;">
-        <input type="text" name="q" placeholder="Пошук по всіх полях..." value="<?= htmlspecialchars($_GET['q'] ?? '') ?>">
+        <input type="text" name="q" placeholder="Пошук по всіх полях..." value="<?= htmlspecialchars($search) ?>">
         <button type="submit">Знайти</button>
-        <?php if (!empty($_GET['q'])): ?>
+        <?php if ($search !== ''): ?>
             <a href="<?= $baseUri ?>">Скинути</a>
         <?php endif; ?>
     </form>
