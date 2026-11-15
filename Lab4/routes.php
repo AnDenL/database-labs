@@ -18,12 +18,14 @@ $router->get('/workers', function() use ($dbc) {
     render_page($dbc, 'workers', 'tab_number', 'Управління працівниками', '/workers', [
         'full_name' => 'ПІБ',
         'position'  => 'Посада',
+        'salary'    => 'Зарплата',
+        'photo'     => 'Фото',
     ]);
 });
 $router->post('/workers/save', function() use ($dbc) {
     auto_save($dbc, 'workers', 'tab_number', '/workers');
 });
-$router->get('/workers/delete', function() use ($dbc) {
+$router->post('/workers/delete', function() use ($dbc) {
     handle_delete($dbc, 'workers', 'tab_number', '/workers');
 });
 
@@ -37,7 +39,7 @@ $router->get('/fields', function() use ($dbc) {
 $router->post('/fields/save', function() use ($dbc) {
     auto_save($dbc, 'fields', 'field_id', '/fields');
 });
-$router->get('/fields/delete', function() use ($dbc) {
+$router->post('/fields/delete', function() use ($dbc) {
     handle_delete($dbc, 'fields', 'field_id', '/fields');
 });
 
@@ -51,7 +53,7 @@ $router->get('/buyers', function() use ($dbc) {
 $router->post('/buyers/save', function() use ($dbc) {
     auto_save($dbc, 'buyers', 'buyer_id', '/buyers');
 });
-$router->get('/buyers/delete', function() use ($dbc) {
+$router->post('/buyers/delete', function() use ($dbc) {
     handle_delete($dbc, 'buyers', 'buyer_id', '/buyers');
 });
 
@@ -65,7 +67,7 @@ $router->get('/crops', function() use ($dbc) {
 $router->post('/crops/save', function() use ($dbc) {
     auto_save($dbc, 'crops', 'crop_id', '/crops');
 });
-$router->get('/crops/delete', function() use ($dbc) {
+$router->post('/crops/delete', function() use ($dbc) {
     handle_delete($dbc, 'crops', 'crop_id', '/crops');
 });
 
@@ -79,7 +81,7 @@ $router->get('/warehouses', function() use ($dbc) {
 $router->post('/warehouses/save', function() use ($dbc) {
     auto_save($dbc, 'warehouses', 'warehouse_id', '/warehouses');
 });
-$router->get('/warehouses/delete', function() use ($dbc) {
+$router->post('/warehouses/delete', function() use ($dbc) {
     handle_delete($dbc, 'warehouses', 'warehouse_id', '/warehouses');
 });
 
@@ -89,7 +91,6 @@ $router->get('/operations', function () use ($dbc) {
     $edit_data = null;
     $error     = $_GET['error'] ?? null;
 
-    // Підтягуємо операцію разом з усіма деталями з дочірніх таблиць
     if ($edit_id > 0) {
         $editSql = "
             SELECT
@@ -135,7 +136,6 @@ $router->get('/operations', function () use ($dbc) {
     $warehouses = mysqli_fetch_all(mysqli_query($dbc, "SELECT warehouse_id, name FROM warehouses ORDER BY name"), MYSQLI_ASSOC);
     $buyers     = mysqli_fetch_all(mysqli_query($dbc, "SELECT buyer_id, name FROM buyers ORDER BY name"), MYSQLI_ASSOC);
 
-    // --- ФІЛЬТРАЦІЯ ТА СОРТУВАННЯ ---
     $filterType   = $_GET['filter_type'] ?? '';
     $filterStatus = $_GET['filter_status'] ?? '';
     $filterWorker = (int)($_GET['filter_worker'] ?? 0);
@@ -161,7 +161,6 @@ $router->get('/operations', function () use ($dbc) {
     }
 
     if ($filterWorker > 0) {
-        // EXISTS зберігає повний список працівників у GROUP_CONCAT
         $where[]  = "EXISTS (SELECT 1 FROM operation_workers owf WHERE owf.op_id = o.op_id AND owf.tab_number = ?)";
         $params[] = $filterWorker;
         $types   .= 'i';
@@ -242,7 +241,15 @@ $router->post('/operations/save', function() use ($dbc) {
     exit;
 });
 
-$router->get('/operations/delete', function() use ($dbc) {
-    $id = (int)($_GET['id'] ?? 0);
+$router->post('/operations/delete', function() use ($dbc) {
+    $id = (int)($_POST['id'] ?? 0);
     delete_operation($dbc, $id);
+});
+
+
+// --- REPORT ---
+$router->get('/report', function() use ($dbc) {
+    $res   = mysqli_query($dbc, "SELECT * FROM v_operations_report ORDER BY op_date DESC, op_id DESC");
+    $items = mysqli_fetch_all($res, MYSQLI_ASSOC);
+    require 'views/report.php';
 });

@@ -7,5 +7,6 @@
         <a href="/crops" style="color: white;">Культури</a>
         <a href="/buyers" style="color: white;">Покупці</a>
         <a href="/warehouses" style="color: white;">Склади</a>
+        <a href="/report" style="color: white;">Звіт</a>
     </nav>
 </div>

@@ -93,3 +93,46 @@ th {
 tr:hover {
     background-color: #f8f9fa;
 }
+
+a.subtle-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+a.subtle-link:hover {
+    text-decoration: underline;
+    color: #1b263b;
+}
+
+.inline-form {
+    display: inline;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+button.btn-delete {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #c1121f;
+    font: inherit;
+    font-weight: normal;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+button.btn-delete:hover {
+    background: none;
+    color: #780000;
+}
+
+.alert-error {
+    background: #ffe6e6;
+    color: #cc0000;
+    padding: 10px 14px;
+    margin: 15px 0;
+    border: 1px solid #cc0000;
+    border-radius: 6px;
+}

@@ -18,7 +18,8 @@ CREATE TABLE crops (
 CREATE TABLE workers (
     tab_number INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     full_name VARCHAR(150) NOT NULL,
-    position VARCHAR(100) NOT NULL
+    position VARCHAR(100) NOT NULL,
+    salary DECIMAL(10, 2) NOT NULL
 );
 
 CREATE TABLE warehouses (
@@ -240,3 +241,7 @@ BEGIN
     END IF;
 END $$
 DELIMITER ;
+
+
+ALTER TABLE workers
+ADD COLUMN photo MEDIUMBLOB NULL AFTER salary;

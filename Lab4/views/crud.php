@@ -11,8 +11,8 @@ $crudSortUrl = function (string $col) use ($baseUri, $currentSort, $currentDir):
 };
 
 $crudArrow = function (string $col) use ($currentSort, $currentDir): string {
-    if ($currentSort !== $col) return ' ↕';
-    return $currentDir === 'ASC' ? ' ↑' : ' ↓';
+    if ($currentSort !== $col) return '';
+    return $currentDir === 'ASC' ? ' ▲' : ' ▼';
 };
 ?>
 <!DOCTYPE html>
@@ -25,14 +25,8 @@ $crudArrow = function (string $col) use ($currentSort, $currentDir): string {
 <body>
     <?php include 'menu.php'; ?>
 
-    <?php if (!empty($error)): ?>
-        <div style="background: #ffe6e6; color: #cc0000; padding: 10px; margin-bottom: 15px; border: 1px solid #cc0000;">
-            <?= htmlspecialchars($error) ?>
-        </div>
-    <?php endif; ?>
-
     <h2><?= $edit_data ? 'Редагувати запис' : 'Додати новий запис' ?></h2>
-    <form method="post" action="<?= $baseUri ?>/save">
+    <form method="post" action="<?= $baseUri ?>/save" enctype="multipart/form-data">
         <div class="form-group">
             <?php if ($edit_data): ?>
                 <input type="hidden" name="<?= $primaryKey ?>" value="<?= (int)$edit_data[$primaryKey] ?>">
@@ -40,15 +34,48 @@ $crudArrow = function (string $col) use ($currentSort, $currentDir): string {
 
             <?php foreach ($columns as $field => $meta): ?>
                 <?php if ($meta['is_pk'] || $meta['is_auto']) continue; ?>
-                <label><?= htmlspecialchars($meta['label']) ?>:</label>
-                <input
-                    type="<?= $meta['input_type'] ?>"
-                    name="<?= $field ?>"
-                    placeholder="<?= htmlspecialchars($meta['label']) ?>"
-                    value="<?= htmlspecialchars((string)($edit_data[$field] ?? '')) ?>"
-                    <?= $meta['type'] === 'd' ? 'step="0.01"' : '' ?>
-                    <?= $meta['required'] ? 'required' : '' ?>
-                >
+                <?php if (!empty($meta['is_blob'])): ?>
+                    <input
+                        type="file"
+                        name="<?= $field ?>"
+                        accept="image/*"
+                        onchange="previewPhoto(this, 'preview_<?= $field ?>')"
+                    >
+                    <?php
+                        $hasExisting = !empty($edit_data[$field]);
+                        $existingSrc = '';
+                        if ($hasExisting) {
+                            $info = @getimagesizefromstring($edit_data[$field]);
+                            $mime = $info['mime'] ?? 'image/jpeg';
+                            $existingSrc = "data:{$mime};base64," . base64_encode($edit_data[$field]);
+                        }
+                    ?>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                        <img
+                            id="preview_<?= $field ?>"
+                            src="<?= $existingSrc ?>"
+                            alt="Фото"
+                            style="width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid #ccc; <?= $hasExisting ? '' : 'display: none;' ?>"
+                        >
+                        <?php if ($hasExisting): ?>
+                            <label style="font-weight: normal; cursor: pointer;">
+                                <input type="checkbox" name="delete_<?= $field ?>" value="1"> Видалити поточне фото
+                            </label>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <label><?= htmlspecialchars($meta['label']) ?>:</label>
+                    <input
+                        type="<?= $meta['input_type'] ?>"
+                        name="<?= $field ?>"
+                        placeholder="<?= htmlspecialchars($meta['label']) ?>"
+                        value="<?= htmlspecialchars((string)($edit_data[$field] ?? '')) ?>"
+                        <?= isset($meta['min'])  ? 'min="'  . $meta['min']  . '"' : '' ?>
+                        <?= isset($meta['max'])  ? 'max="'  . $meta['max']  . '"' : '' ?>
+                        <?= isset($meta['step']) ? 'step="' . $meta['step'] . '"' : '' ?>
+                        <?= $meta['required'] ? 'required' : '' ?>
+                    >
+                <?php endif; ?>
             <?php endforeach; ?>
 
             <div style="margin-top: 10px;">
@@ -88,16 +115,44 @@ $crudArrow = function (string $col) use ($currentSort, $currentDir): string {
                 <td><?= (int)$row[$primaryKey] ?></td>
                 <?php foreach ($columns as $field => $meta): ?>
                     <?php if ($meta['is_pk'] || $meta['is_auto']) continue; ?>
-                    <td><?= htmlspecialchars((string)$row[$field]) ?></td>
+                    <?php if (!empty($meta['is_blob'])): ?>
+                        <td>
+                            <?php if (!empty($row[$field])): ?>
+                                <?php
+                                    $info = @getimagesizefromstring($row[$field]);
+                                    $mime = $info['mime'] ?? 'image/jpeg';
+                                ?>
+                                <img src="data:<?= $mime ?>;base64,<?= base64_encode($row[$field]) ?>"
+                                        alt="Фото"
+                                        style="width: 54px; height: 54px; object-fit: cover; border-radius: 50%; border: 1px solid #ccc;">
+                            <?php else: ?>
+                                <span style="color: #888; font-size: 13px;">—</span>
+                            <?php endif; ?>
+                        </td>
+                    <?php else: ?>
+                        <td><?= htmlspecialchars((string)$row[$field]) ?></td>
+                    <?php endif; ?>
                 <?php endforeach; ?>
                 <td>
                     <a href="<?= $baseUri ?>?edit=<?= (int)$row[$primaryKey] ?>">Редагувати</a> |
-                    <a href="<?= $baseUri ?>/delete?id=<?= (int)$row[$primaryKey] ?>" onclick="return confirm('Видалити цей запис?')">Видалити</a>
+                    <form method="post" action="<?= $baseUri ?>/delete" class="inline-form" onsubmit="return confirm('Видалити запис #<?= (int)$row[$primaryKey] ?>?')">
+                        <input type="hidden" name="id" value="<?= (int)$row[$primaryKey] ?>">
+                        <button type="submit" class="btn-delete">Видалити</button>
+                    </form>
                 </td>
             </tr>
             <?php endforeach; ?>
         </tbody>
     </table>
+
+    <script>
+        function previewPhoto(input, previewId) {
+            const preview = document.getElementById(previewId);
+            if (!preview || !input.files || !input.files[0]) return;
+            preview.src = URL.createObjectURL(input.files[0]);
+            preview.style.display = 'block';
+        }
+    </script>
 
     <?php include 'footer.php'; ?>
 </body>

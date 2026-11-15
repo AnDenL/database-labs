@@ -15,7 +15,6 @@ $statuses = [
     'CANCELLED'   => 'Скасовано (CANCELLED)',
 ];
 
-// Допоміжна функція для посилань сортування зі збереженням поточних фільтрів
 $currentSort = $_GET['sort'] ?? 'op_id';
 $currentDir  = strtoupper($_GET['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
 
@@ -110,7 +109,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
 
             <div class="form-group">
                 <label>Планові години:</label>
-                <input type="number" step="0.1" name="planned_hours" value="<?= htmlspecialchars((string)($edit_data['planned_hours'] ?? '')) ?>" required>
+                <input min="0" max="9999.99" type="number" step="0.1" name="planned_hours" value="<?= htmlspecialchars((string)($edit_data['planned_hours'] ?? '')) ?>" required>
             </div>
 
             <div class="form-group">
@@ -124,7 +123,6 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 </select>
             </div>
 
-            <!-- Поле: для PLOWING, SOWING, HARVESTING -->
             <div class="form-group type-field field-plowing field-sowing field-harvesting">
                 <label>Поле:</label>
                 <select name="field_id">
@@ -137,7 +135,6 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 </select>
             </div>
 
-            <!-- Культура: для SOWING, TRANSFER, SALES -->
             <div class="form-group type-field field-sowing field-transfer field-sales">
                 <label>Культура:</label>
                 <select name="crop_id">
@@ -152,7 +149,6 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
         </div>
 
         <div class="form-grid">
-            <!-- Склад: лише для TRANSFER -->
             <div class="form-group type-field field-transfer">
                 <label>Склад призначення:</label>
                 <select name="warehouse_id">
@@ -165,22 +161,19 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                 </select>
             </div>
 
-            <!-- Зібраний врожай: HARVESTING -->
             <div class="form-group type-field field-harvesting">
                 <label>Зібрано (тонн):</label>
-                <input type="number" step="0.01" name="harvested_tons" value="<?= htmlspecialchars((string)($edit_data['harvested_tons'] ?? '')) ?>" placeholder="0.00">
+                <input min="0" max="9999.99" type="number" step="0.01" name="harvested_tons" value="<?= htmlspecialchars((string)($edit_data['harvested_tons'] ?? '')) ?>" placeholder="0.00">
             </div>
 
-            <!-- Переміщено на склад: TRANSFER -->
             <div class="form-group type-field field-transfer">
                 <label>Переміщено (тонн):</label>
-                <input type="number" step="0.01" name="transferred_tons" value="<?= htmlspecialchars((string)($edit_data['transferred_tons'] ?? '')) ?>" placeholder="0.00">
+                <input min="0" max="9999.99" type="number" step="0.01" name="transferred_tons" value="<?= htmlspecialchars((string)($edit_data['transferred_tons'] ?? '')) ?>" placeholder="0.00">
             </div>
 
-            <!-- Продаж: SALES -->
             <div class="form-group type-field field-sales">
                 <label>Продано (тонн):</label>
-                <input type="number" step="0.01" name="sold_tons" value="<?= htmlspecialchars((string)($edit_data['sold_tons'] ?? '')) ?>" placeholder="0.00">
+                <input min="0" max="9999.99" type="number" step="0.01" name="sold_tons" value="<?= htmlspecialchars((string)($edit_data['sold_tons'] ?? '')) ?>" placeholder="0.00">
             </div>
 
             <div class="form-group type-field field-sales">
@@ -197,7 +190,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
 
             <div class="form-group type-field field-sales">
                 <label>Ціна за тонну (грн):</label>
-                <input type="number" step="0.01" name="price_per_ton" value="<?= htmlspecialchars((string)($edit_data['price_per_ton'] ?? '')) ?>" placeholder="0.00">
+                <input min="0" max="9999.99" type="number" step="0.01" name="price_per_ton" value="<?= htmlspecialchars((string)($edit_data['price_per_ton'] ?? '')) ?>" placeholder="0.00">
             </div>
         </div>
 
@@ -221,7 +214,6 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
 
     <h2>Журнал операцій (знайдено: <?= count($items) ?>)</h2>
 
-    <!-- ПАНЕЛЬ ФІЛЬТРАЦІЇ ТА СОРТУВАННЯ -->
     <form method="get" action="/operations" class="filter-bar">
         <div class="filter-grid">
             <div class="form-group">
@@ -321,30 +313,33 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
                     <td><?= htmlspecialchars($row['status']) ?></td>
                     <td>
                         <?php if ($row['op_type'] === 'PLOWING'): ?>
-                            <b>Поле:</b> <?= htmlspecialchars($row['field_name'] ?? 'Не вказано') ?>
+                            <b>Поле:</b> <?= render_links($row['field_name'] ?? null, '/fields') ?>
                         <?php elseif ($row['op_type'] === 'SOWING'): ?>
-                            <b>Поле:</b> <?= htmlspecialchars($row['field_name'] ?? 'Не вказано') ?><br>
-                            <b>Культура:</b> <?= htmlspecialchars($row['crop_name'] ?? 'Не вказано') ?>
+                            <b>Поле:</b> <?= render_links($row['field_name'] ?? null, '/fields') ?><br>
+                            <b>Культура:</b> <?= render_links($row['crop_name'] ?? null, '/crops') ?>
                         <?php elseif ($row['op_type'] === 'HARVESTING'): ?>
-                            <b>Поле:</b> <?= htmlspecialchars($row['field_name'] ?? 'Не вказано') ?><br>
+                            <b>Поле:</b> <?= render_links($row['field_name'] ?? null, '/fields') ?><br>
                             <b>Зібрано:</b> <?= number_format((float)($row['harvested_tons'] ?? 0), 2, '.', ' ') ?> т
                         <?php elseif ($row['op_type'] === 'TRANSFER'): ?>
-                            <b>Культура:</b> <?= htmlspecialchars($row['crop_name'] ?? 'Не вказано') ?><br>
-                            <b>Склад:</b> <?= htmlspecialchars($row['warehouse_name'] ?? 'Не вказано') ?><br>
+                            <b>Культура:</b> <?= render_links($row['crop_name'] ?? null, '/crops') ?><br>
+                            <b>Склад:</b> <?= render_links($row['warehouse_name'] ?? null, '/warehouses') ?><br>
                             <b>Переміщено:</b> <?= number_format((float)($row['transferred_tons'] ?? 0), 2, '.', ' ') ?> т
                         <?php elseif ($row['op_type'] === 'SALES'): ?>
-                            <b>Культура:</b> <?= htmlspecialchars($row['crop_name'] ?? 'Не вказано') ?><br>
-                            <b>Покупець:</b> <?= htmlspecialchars($row['buyer_name'] ?? 'Не вказано') ?><br>
+                            <b>Культура:</b> <?= render_links($row['crop_name'] ?? null, '/crops') ?><br>
+                            <b>Покупець:</b> <?= render_links($row['buyer_name'] ?? null, '/buyers') ?><br>
                             <b>Обсяг:</b> <?= number_format((float)($row['sold_tons'] ?? 0), 2, '.', ' ') ?> т
                             (<b>Сума:</b> <?= number_format((float)($row['sold_tons'] ?? 0) * (float)($row['price_per_ton'] ?? 0), 2, '.', ' ') ?> грн)
                         <?php else: ?>
                             —
                         <?php endif; ?>
-                        <br><small><b>Виконавці:</b> <?= htmlspecialchars($row['workers_list'] ?? 'Не призначено') ?></small>
+                        <br><small><b>Виконавці:</b> <?= render_links($row['workers_list'] ?? null, '/workers', 'Не призначено', true) ?></small>
                     </td>
                     <td>
                         <a href="/operations?edit=<?= (int)$row['op_id'] ?>">Редагувати</a> |
-                        <a href="/operations/delete?id=<?= (int)$row['op_id'] ?>" onclick="return confirm('Видалити цю операцію?')">Видалити</a>
+                        <form method="post" action="/operations/delete" class="inline-form" onsubmit="return confirm('Видалити операцію #<?= (int)$row['op_id'] ?>?')">
+                            <input type="hidden" name="id" value="<?= (int)$row['op_id'] ?>">
+                            <button type="submit" class="btn-delete">Видалити</button>
+                        </form>
                     </td>
                 </tr>
                 <?php endforeach; ?>
