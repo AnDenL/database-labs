@@ -20,7 +20,7 @@ $crud = [
     ],
     '/fields' => [
         'table' => 'fields', 'pk' => 'field_id', 'title' => 'Управління полями',
-        'labels' => ['name' => 'Назва поля', 'area' => 'Площа (га)'],
+        'labels' => ['name' => 'Назва поля', 'area' => 'Площа (га)', 'actual' => 'В використанні'],
     ],
     '/buyers' => [
         'table' => 'buyers', 'pk' => 'buyer_id', 'title' => 'Управління покупцями',

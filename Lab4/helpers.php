@@ -268,10 +268,16 @@ function handle_delete(mysqli $dbc, string $tableName, string $primaryKey, strin
     try {
         $affected = db_exec($dbc, 'DELETE FROM ' . ident($tableName) . ' WHERE ' . ident($primaryKey) . ' = ?', 'i', [$id]);
     } catch (mysqli_sql_exception $e) {
-        error_log($e->getMessage());
-        redirect($back, $e->getCode() === 1451
-            ? "Неможливо видалити запис #{$id}, оскільки він використовується в операціях!"
-            : 'Не вдалося видалити запис.');
+        $msg = $e->getMessage();
+            error_log($msg);
+
+        $userMessage = match (true) {
+            $e->getCode() === 1451 => "Неможливо видалити запис #{$id}, оскільки він використовується в операціях!",
+            $e->getCode() === 1644 => "Неможливо видалити активний запис #{$id}!",
+            default => "Не вдалося видалити запис.",
+        };
+
+        redirect($back, $userMessage);
     }
 
     redirect($back, $affected === 0 ? "Запис #{$id} не знайдено або вже видалено." : null);
