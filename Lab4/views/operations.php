@@ -272,7 +272,7 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
     <table border="1" cellpadding="6" cellspacing="0" id="operationsTable">
         <thead>
             <tr>
-                <?php foreach (['op_id' => 'ID', 'op_type' => 'Тип операції', 'op_date' => 'Дата', 'planned_hours' => 'Години', 'status' => 'Статус'] as $col => $title): ?>
+                <?php foreach (['op_type' => 'Тип операції', 'op_date' => 'Дата', 'planned_hours' => 'Години', 'status' => 'Статус'] as $col => $title): ?>
                     <th><a class="sort-link" href="<?= htmlspecialchars(sort_url($col, $currentSort, $currentDir)) ?>"><?= $title ?><?= sort_arrow($col, $currentSort, $currentDir) ?></a></th>
                 <?php endforeach; ?>
                 <th>Деталі та виконавці</th>
@@ -285,7 +285,6 @@ function sort_arrow(string $column, string $currentSort, string $currentDir): st
             <?php else: ?>
                 <?php foreach ($items as $row): ?>
                 <tr>
-                    <td><?= (int)$row['op_id'] ?></td>
                     <td><?= htmlspecialchars(OP_TYPES[$row['op_type']] ?? $row['op_type']) ?></td>
                     <td><?= htmlspecialchars($row['op_date']) ?></td>
                     <td><?= htmlspecialchars((string)$row['planned_hours']) ?></td>

@@ -126,9 +126,9 @@ $resetUri   = $activeView !== null ? $baseUri . '?view=' . urlencode($activeView
     <table border="1" cellpadding="6" cellspacing="0">
         <thead>
             <tr>
-                <?php if (empty($readOnly)): ?>
+                <!--<?php if (empty($readOnly)): ?>
                     <th><a href="<?= htmlspecialchars($crudSortUrl($primaryKey)) ?>" style="color: inherit; text-decoration: none;">ID<?= $crudArrow($primaryKey) ?></a></th>
-                <?php endif; ?>
+                <?php endif; ?>-->
 
                 <?php foreach ($columns as $field => $meta): ?>
                     <?php if (empty($readOnly) && ($meta['is_pk'] || $meta['is_auto'])) continue; ?>
@@ -150,9 +150,9 @@ $resetUri   = $activeView !== null ? $baseUri . '?view=' . urlencode($activeView
             <?php else: ?>
                 <?php foreach ($items as $row): ?>
                 <tr>
-                    <?php if (empty($readOnly)): ?>
+                    <!--<?php if (empty($readOnly)): ?>
                         <td><?= (int)$row[$primaryKey] ?></td>
-                    <?php endif; ?>
+                    <?php endif; ?>-->
 
                     <?php foreach ($columns as $field => $meta): ?>
                         <?php if (empty($readOnly) && ($meta['is_pk'] || $meta['is_auto'])) continue; ?>
@@ -198,6 +198,50 @@ $resetUri   = $activeView !== null ? $baseUri . '?view=' . urlencode($activeView
                 preview.src = URL.createObjectURL(input.files[0]);
                 preview.style.display = 'block';
             }
+            document.addEventListener('DOMContentLoaded', () => {
+                // 1. Заборона відправки пустого або пробільного пошуку на сервер
+                const searchForm = document.querySelector('form[method="get"][action="<?= $baseUri ?>"]');
+                if (searchForm) {
+                    searchForm.addEventListener('submit', (e) => {
+                        const qInput = searchForm.querySelector('input[name="q"]');
+                        if (qInput) {
+                            qInput.value = qInput.value.trim();
+                            if (qInput.value === '') {
+                                e.preventDefault();
+                                alert('Введіть текст для пошуку (порожній запит або пробіли не відправляються).');
+                                qInput.focus();
+                            }
+                        }
+                    });
+                }
+
+                // 2. Перевірка форми додавання/редагування на клієнті (trim, порожнеча, прості ін'єкції)
+                const crudForm = document.querySelector('form[method="post"][action="<?= $baseUri ?>/save"]');
+                if (crudForm) {
+                    crudForm.addEventListener('submit', (e) => {
+                        const forbidden = /(--|\/\*|\bUNION\s+SELECT\b|\bDROP\s+TABLE\b)/i;
+                        const inputs = crudForm.querySelectorAll('input[type="text"], input[type="number"], input[type="date"]');
+
+                        for (const inp of inputs) {
+                            const trimmed = inp.value.trim();
+                            inp.value = trimmed;
+
+                            if (inp.hasAttribute('required') && trimmed === '') {
+                                e.preventDefault();
+                                alert(`Поле "${inp.placeholder || inp.name}" не може бути порожнім або складатися з пробілів.`);
+                                inp.focus();
+                                return;
+                            }
+                            if (forbidden.test(trimmed)) {
+                                e.preventDefault();
+                                alert(`Поле "${inp.placeholder || inp.name}" містить заборонені символи або фрагменти SQL-коду.`);
+                                inp.focus();
+                                return;
+                            }
+                        }
+                    });
+                }
+            });
         </script>
     <?php endif; ?>
 

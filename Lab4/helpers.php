@@ -63,7 +63,9 @@ const INT_RANGES = [
 ];
 
 function get_table_schema(mysqli $dbc, string $tableName, array $labels = []): array {
-    $res    = mysqli_query($dbc, 'SELECT * FROM ' . ident($tableName) . ' LIMIT 0');
+    $fields_to_show = array_keys($labels);
+    $res    = mysqli_query($dbc, 'SELECT ' . implode(',', $fields_to_show) .' FROM ' . ident($tableName) . ' LIMIT 0');
+    // $res    = mysqli_query($dbc, 'SELECT * FROM ' . ident($tableName) . ' LIMIT 0');
     $fields = mysqli_fetch_fields($res);
     mysqli_free_result($res);
 
@@ -149,8 +151,10 @@ function render_page(
     try {
         $columns = get_table_schema($dbc, $tableName, $labels);
 
+        $fields_to_show = array_keys($labels);
+
         if ($edit_id > 0 && $pk !== '') {
-            $edit_data = db_one($dbc, "SELECT * FROM $tbl WHERE $pk = ?", 'i', [$edit_id]);
+            $edit_data = db_one($dbc, "SELECT ' . implode(',', $fields_to_show) . ' FROM $tbl WHERE $pk = ?", 'i', [$edit_id]);
             if ($edit_data === null) {
                 $error = "Запис з ID {$edit_id} не знайдено.";
             }

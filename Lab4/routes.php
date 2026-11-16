@@ -60,7 +60,7 @@ $router->get('/report', function () use ($dbc) {
         'v_operations_report' => [
             'title'  => 'Зведений звіт по операціях',
             'labels' => [
-                'op_id'          => 'ID',
+                // 'op_id'          => 'ID',
                 'op_type'        => 'Тип',
                 'op_date'        => 'Дата',
                 'planned_hours'  => 'Години',
@@ -77,7 +77,7 @@ $router->get('/report', function () use ($dbc) {
         'v_active_fields' => [
             'title'  => 'Зведений звіт по активним полям',
             'labels' => [
-                'field_id' => 'ID',
+                // 'field_id' => 'ID',
                 'name'     => 'Назва поля',
                 'area'     => 'Площа',
             ],
@@ -85,7 +85,7 @@ $router->get('/report', function () use ($dbc) {
         'v_sales_report' => [
             'title'  => 'Зведений звіт з продажів',
             'labels' => [
-                'op_id'          => 'ID',
+                // 'op_id'          => 'ID',
                 'op_date'        => 'Дата',
                 'crop_name'      => 'Культура',
                 'buyer_name'     => 'Покупець',
